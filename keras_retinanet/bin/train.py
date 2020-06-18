@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
 """
+keras_retinanet/bin/train.py --tensorboard-dir ~/RetinanetTutorial/TrainingOutput --snapshot-path ~/RetinanetTutorial/TrainingOutput/snapshots --random-transform --steps 100 pascal /home/jasper/Datasets/NightPlumsVOC/
+"""
+
+"""
 Copyright 2017-2018 Fizyr (https://fizyr.com)
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -201,7 +205,7 @@ def create_callbacks(model, training_model, prediction_model, validation_generat
 
     callbacks.append(keras.callbacks.EarlyStopping(
         monitor    = 'mAP',
-        patience   = 5,
+        patience   = 20,
         mode       = 'max',
         min_delta  = 0.01
     ))
@@ -423,7 +427,7 @@ def parse_args(args):
     parser.add_argument('--multi-gpu',        help='Number of GPUs to use for parallel processing.', type=int, default=0)
     parser.add_argument('--multi-gpu-force',  help='Extra flag needed to enable (experimental) multi-gpu support.', action='store_true')
     parser.add_argument('--initial-epoch',    help='Epoch from which to begin the train, useful if resuming from snapshot.', type=int, default=0)
-    parser.add_argument('--epochs',           help='Number of epochs to train.', type=int, default=50)
+    parser.add_argument('--epochs',           help='Number of epochs to train.', type=int, default=150)
     parser.add_argument('--steps',            help='Number of steps per epoch.', type=int, default=10000)
     parser.add_argument('--lr',               help='Learning rate.', type=float, default=1e-5)
     parser.add_argument('--snapshot-path',    help='Path to store snapshots of models during training (defaults to \'./snapshots\')', default='./snapshots')
@@ -438,7 +442,7 @@ def parse_args(args):
     parser.add_argument('--config',           help='Path to a configuration parameters .ini file.')
     parser.add_argument('--weighted-average', help='Compute the mAP using the weighted average of precisions among classes.', action='store_true')
     parser.add_argument('--compute-val-loss', help='Compute validation loss during training', dest='compute_val_loss', action='store_true')
-    parser.add_argument('--reduce-lr-patience', help='Reduce learning rate after validation loss decreases over reduce_lr_patience epochs', type=int, default=2)
+    parser.add_argument('--reduce-lr-patience', help='Reduce learning rate after validation loss decreases over reduce_lr_patience epochs', type=int, default=3)
     parser.add_argument('--reduce-lr-factor', help='When learning rate is reduced due to reduce_lr_patience, multiply by reduce_lr_factor', type=float, default=0.1)
 
     # Fit generator arguments
@@ -486,6 +490,7 @@ def main(args=None):
         weights = args.weights
         # default to imagenet if nothing else is specified
         if weights is None and args.imagenet_weights:
+            print("Caution! Loading imagenet weights")
             weights = backbone.download_imagenet()
 
         print('Creating model, this may take a second...')
@@ -536,4 +541,5 @@ def main(args=None):
 
 
 if __name__ == '__main__':
+    print("CHECK: Is CUDA the right version (10)?")
     main()
