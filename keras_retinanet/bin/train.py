@@ -76,6 +76,7 @@ def model_with_weights(model, weights, skip_mismatch):
         skip_mismatch : If True, skips layers whose shape of weights doesn't match with the model.
     """
     if weights is not None:
+        print("Loading weights into model")
         model.load_weights(weights, by_name=True, skip_mismatch=skip_mismatch)
     return model
 
@@ -110,6 +111,7 @@ def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0,
     # Keras recommends initialising a multi-gpu model on the CPU to ease weight sharing, and to prevent OOM errors.
     # optionally wrap in a parallel model
     if multi_gpu > 1:
+        print("CAUTION: Using multi GPU not tested")
         from keras.utils import multi_gpu_model
         with tf.device('/cpu:0'):
             model = model_with_weights(backbone_retinanet(num_classes, num_anchors=num_anchors, modifier=modifier), weights=weights, skip_mismatch=True)
@@ -256,25 +258,7 @@ def create_generators(args, preprocess_image):
         transform_generator = random_transform_generator(flip_x_chance=0.5)
         visual_effect_generator = None
 
-    if args.dataset_type == 'coco':
-        # import here to prevent unnecessary dependency on cocoapi
-        from ..preprocessing.coco import CocoGenerator
-
-        train_generator = CocoGenerator(
-            args.coco_path,
-            'train2017',
-            transform_generator=transform_generator,
-            visual_effect_generator=visual_effect_generator,
-            **common_args
-        )
-
-        validation_generator = CocoGenerator(
-            args.coco_path,
-            'val2017',
-            shuffle_groups=False,
-            **common_args
-        )
-    elif args.dataset_type == 'pascal':
+    if args.dataset_type == 'pascal':
         train_generator = PascalVocGenerator(
             args.pascal_path,
             'train',
@@ -291,64 +275,8 @@ def create_generators(args, preprocess_image):
             shuffle_groups=False,
             **common_args
         )
-    elif args.dataset_type == 'csv':
-        train_generator = CSVGenerator(
-            args.annotations,
-            args.classes,
-            transform_generator=transform_generator,
-            visual_effect_generator=visual_effect_generator,
-            **common_args
-        )
-
-        if args.val_annotations:
-            validation_generator = CSVGenerator(
-                args.val_annotations,
-                args.classes,
-                shuffle_groups=False,
-                **common_args
-            )
-        else:
-            validation_generator = None
-    elif args.dataset_type == 'oid':
-        train_generator = OpenImagesGenerator(
-            args.main_dir,
-            subset='train',
-            version=args.version,
-            labels_filter=args.labels_filter,
-            annotation_cache_dir=args.annotation_cache_dir,
-            parent_label=args.parent_label,
-            transform_generator=transform_generator,
-            visual_effect_generator=visual_effect_generator,
-            **common_args
-        )
-
-        validation_generator = OpenImagesGenerator(
-            args.main_dir,
-            subset='validation',
-            version=args.version,
-            labels_filter=args.labels_filter,
-            annotation_cache_dir=args.annotation_cache_dir,
-            parent_label=args.parent_label,
-            shuffle_groups=False,
-            **common_args
-        )
-    elif args.dataset_type == 'kitti':
-        train_generator = KittiGenerator(
-            args.kitti_path,
-            subset='train',
-            transform_generator=transform_generator,
-            visual_effect_generator=visual_effect_generator,
-            **common_args
-        )
-
-        validation_generator = KittiGenerator(
-            args.kitti_path,
-            subset='val',
-            shuffle_groups=False,
-            **common_args
-        )
     else:
-        raise ValueError('Invalid data type received: {}'.format(args.dataset_type))
+        raise ValueError('Only the pascal dataset is supported. Invalid data type received: {}'.format(args.dataset_type))
 
     return train_generator, validation_generator
 
@@ -418,7 +346,7 @@ def parse_args(args):
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--snapshot',          help='Resume training from a snapshot.')
-    group.add_argument('--imagenet-weights',  help='Initialize the model with pretrained imagenet weights. This is the default behaviour.', action='store_const', const=True, default=True)
+    group.add_argument('--imagenet-weights',  help='Initialize the model with pretrained imagenet weights. This is the default behaviour.', action='store_const', const=True, default=False)
     group.add_argument('--weights',           help='Initialize the model with weights from a file.')
     group.add_argument('--no-weights',        help='Don\'t initialize the model with any weights.', dest='imagenet_weights', action='store_const', const=False)
     parser.add_argument('--backbone',         help='Backbone model used by retinanet.', default='resnet50', type=str)
@@ -488,6 +416,7 @@ def main(args=None):
         prediction_model = retinanet_bbox(model=model, anchor_params=anchor_params)
     else:
         weights = args.weights
+        print("weights arg is {}".format(weights))
         # default to imagenet if nothing else is specified
         if weights is None and args.imagenet_weights:
             print("Caution! Loading imagenet weights")
