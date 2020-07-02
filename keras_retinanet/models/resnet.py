@@ -93,6 +93,10 @@ def resnet_retinanet(num_classes, backbone='resnet50', inputs=None, modifier=Non
             inputs = keras.layers.Input(shape=(3, None, None))
         else:
             inputs = keras.layers.Input(shape=(None, None, 3))
+            #JASPER: The default input shape is set here, default is 3 for RGB
+        print("Building ResNet backbone using default input shape of {}".format(inputs))
+    else:
+        print("Building ResNet backbone using defined input shape of {}".format(inputs))
 
     # create the resnet backbone
     if backbone == 'resnet50':

@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+ERROR, THE PASCALVOC GENERATOR CANT BE USED WITH RGBD DATA, USE PLUMS_RGBD INSTEAD
+
 from ..preprocessing.generator import Generator
 from ..utils.image import read_image_bgr
 

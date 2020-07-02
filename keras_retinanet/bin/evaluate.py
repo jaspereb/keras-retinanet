@@ -27,7 +27,7 @@ if __name__ == "__main__" and __package__ is None:
 # Change these to absolute imports if you copy this script outside the keras_retinanet package.
 from .. import models
 from ..preprocessing.csv_generator import CSVGenerator
-from ..preprocessing.pascal_voc import PascalVocGenerator
+from ..preprocessing.plums_rgbd import PascalRGBDGenerator
 from ..utils.anchors import make_shapes_callback
 from ..utils.config import read_config_file, parse_anchor_parameters
 from ..utils.eval import evaluate
@@ -57,7 +57,7 @@ def create_generator(args, preprocess_image):
             **common_args
         )
     elif args.dataset_type == 'pascal':
-        validation_generator = PascalVocGenerator(
+        validation_generator = PascalRGBDGenerator(
             args.pascal_path,
             'test',
             image_extension=args.image_extension,

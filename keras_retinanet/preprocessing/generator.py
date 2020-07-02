@@ -141,6 +141,11 @@ class Generator(keras.utils.Sequence):
         """
         raise NotImplementedError('load_image method not implemented')
 
+    def load_rgbd(self, image_index):
+        """ Load an RGBD image at the image_index.
+        """
+        raise NotImplementedError('load_rgbd method not implemented')
+
     def load_annotations(self, image_index):
         """ Load annotations for an image_index.
         """
@@ -187,7 +192,12 @@ class Generator(keras.utils.Sequence):
     def load_image_group(self, group):
         """ Load images for all images in a group.
         """
-        return [self.load_image(image_index) for image_index in group]
+        return [self.load_rgb(image_index) for image_index in group]
+
+    def load_rgbd_group(self, group):
+        """ Load images for all RGBD images in a group.
+        """
+        return [self.load_rgbd(image_index) for image_index in group]
 
     def random_visual_effect_group_entry(self, image, annotations):
         """ Randomly transforms image and annotation.
@@ -297,17 +307,23 @@ class Generator(keras.utils.Sequence):
         """ Compute inputs for the network using an image_group.
         """
         # get the max image shape
-        max_shape = tuple(max(image.shape[x] for image in image_group) for x in range(3))
+        max_shape = tuple(max(image.shape[x] for image in image_group) for x in range(3)) #Maxshape is eg. (480,640,4)
 
         # construct an image batch object
         image_batch = np.zeros((self.batch_size,) + max_shape, dtype=keras.backend.floatx())
+        #This is all zeros of shape eg (batch,480,640,4)
 
         # copy all images to the upper left part of the image batch object
         for image_index, image in enumerate(image_group):
             image_batch[image_index, :image.shape[0], :image.shape[1], :image.shape[2]] = image
 
-        if keras.backend.image_data_format() == 'channels_first':
-            image_batch = image_batch.transpose((0, 3, 1, 2))
+        if keras.backend.image_data_format() == 'channels_first': #Channels last is the default
+            # print("Running in 'channels_first' configuration!")
+            image_batch = image_batch.transpose((0, 3, 1, 2)) #This makes (batch, y, x, c) --> (batch, c, y, x)
+            assert (image_batch.shape[1] == 4)  # Bad input shape for RGBD
+        else:
+            assert (image_batch.shape[-1] == 4)  # Bad input shape for RGBD
+            # print("Running in 'channels_last' configuration!")
 
         return image_batch
 
@@ -337,7 +353,7 @@ class Generator(keras.utils.Sequence):
         """ Compute inputs and target outputs for the network.
         """
         # load images and annotations
-        image_group       = self.load_image_group(group)
+        image_group       = self.load_rgbd_group(group)
         annotations_group = self.load_annotations_group(group)
 
         # check validity of annotations
@@ -357,6 +373,16 @@ class Generator(keras.utils.Sequence):
 
         # compute network targets
         targets = self.compute_targets(image_group, annotations_group)
+
+        # print("Saving Sample Input")
+        # np.save('/home/jasper/git/CEIG/keras-retinanet/examples/sampleData/input.npy', inputs)
+        # exit(1)
+
+        # try:
+        assert(inputs.shape[-1] == 4) #Bad input shape for RGBD
+        # except AssertionError:
+        #     print("GOT BAD INPUT SHAPE ERROR")
+        #     print(inputs.shape)
 
         return inputs, targets
 

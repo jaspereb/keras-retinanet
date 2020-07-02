@@ -75,12 +75,14 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
     all_inferences = [None for i in range(generator.size())]
 
     for i in progressbar.progressbar(range(generator.size()), prefix='Running network: '):
-        raw_image    = generator.load_image(i)
-        image        = generator.preprocess_image(raw_image.copy())
-        image, scale = generator.resize_image(image)
+        raw_image    = generator.load_rgbd(i)
+        image        = generator.preprocess_image(raw_image.copy()) #This is fine for RGBD
+        image, scale = generator.resize_image(image) #This is fine for RGBD
 
         if keras.backend.image_data_format() == 'channels_first':
             image = image.transpose((2, 0, 1))
+
+        assert(image.shape[-1] == 4) #Not RGBD shape
 
         # run network
         start = time.time()

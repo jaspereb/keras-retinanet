@@ -45,7 +45,8 @@ from ..models.retinanet import retinanet_bbox
 from ..preprocessing.csv_generator import CSVGenerator
 from ..preprocessing.kitti import KittiGenerator
 from ..preprocessing.open_images import OpenImagesGenerator
-from ..preprocessing.pascal_voc import PascalVocGenerator
+# from ..preprocessing.pascal_voc import PascalVocGenerator
+from ..preprocessing.plums_rgbd import PascalRGBDGenerator
 from ..utils.anchors import make_shapes_callback
 from ..utils.config import read_config_file, parse_anchor_parameters
 from ..utils.gpu import setup_gpu
@@ -82,7 +83,7 @@ def model_with_weights(model, weights, skip_mismatch):
 
 
 def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0,
-                  freeze_backbone=False, lr=1e-5, config=None):
+                  freeze_backbone=False, lr=1e-5, inputs=None, config=None):
     """ Creates three models (model, training_model, prediction_model).
 
     Args
@@ -111,13 +112,14 @@ def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0,
     # Keras recommends initialising a multi-gpu model on the CPU to ease weight sharing, and to prevent OOM errors.
     # optionally wrap in a parallel model
     if multi_gpu > 1:
-        print("CAUTION: Using multi GPU not tested")
+        print("CAUTION: Using multi GPU not tested with rgbd")
+        return
         from keras.utils import multi_gpu_model
         with tf.device('/cpu:0'):
             model = model_with_weights(backbone_retinanet(num_classes, num_anchors=num_anchors, modifier=modifier), weights=weights, skip_mismatch=True)
         training_model = multi_gpu_model(model, gpus=multi_gpu)
     else:
-        model          = model_with_weights(backbone_retinanet(num_classes, num_anchors=num_anchors, modifier=modifier), weights=weights, skip_mismatch=True)
+        model          = model_with_weights(backbone_retinanet(num_classes, num_anchors=num_anchors, modifier=modifier, inputs=inputs), weights=weights, skip_mismatch=True)
         training_model = model
 
     # make prediction model
@@ -236,30 +238,35 @@ def create_generators(args, preprocess_image):
 
     # create random transform generator for augmenting training data
     if args.random_transform:
-        transform_generator = random_transform_generator(
-            min_rotation=-0.1,
-            max_rotation=0.1,
-            min_translation=(-0.1, -0.1),
-            max_translation=(0.1, 0.1),
-            min_shear=-0.1,
-            max_shear=0.1,
-            min_scaling=(0.9, 0.9),
-            max_scaling=(1.1, 1.1),
-            flip_x_chance=0.5,
-            flip_y_chance=0.5,
-        )
-        visual_effect_generator = random_visual_effect_generator(
-            contrast_range=(0.9, 1.1),
-            brightness_range=(-.1, .1),
-            hue_range=(-0.05, 0.05),
-            saturation_range=(0.95, 1.05)
-        )
+        transform_generator = random_transform_generator(flip_x_chance=0.5)
+        # transform_generator = random_transform_generator(
+        #     min_rotation=-0.1,
+        #     max_rotation=0.1,
+        #     min_translation=(-0.1, -0.1),
+        #     max_translation=(0.1, 0.1),
+        #     min_shear=-0.1,
+        #     max_shear=0.1,
+        #     min_scaling=(0.9, 0.9),
+        #     max_scaling=(1.1, 1.1),
+        #     flip_x_chance=0.5,
+        #     flip_y_chance=0.5,
+        # ) Default transform generator, can't be applied with rgbd
+        print("Not applying augmentation to RGBD data")
+        visual_effect_generator = None
+
+        # visual_effect_generator = random_visual_effect_generator(
+        #     contrast_range=(0.9, 1.1),
+        #     brightness_range=(-.1, .1),
+        #     hue_range=(-0.05, 0.05),
+        #     saturation_range=(0.95, 1.05)
+        # )
     else:
         transform_generator = random_transform_generator(flip_x_chance=0.5)
         visual_effect_generator = None
 
     if args.dataset_type == 'pascal':
-        train_generator = PascalVocGenerator(
+        print("Loading a pascal format RGBD dataset")
+        train_generator = PascalRGBDGenerator(
             args.pascal_path,
             'train',
             image_extension=args.image_extension,
@@ -268,7 +275,7 @@ def create_generators(args, preprocess_image):
             **common_args
         )
 
-        validation_generator = PascalVocGenerator(
+        validation_generator = PascalRGBDGenerator(
             args.pascal_path,
             'val',
             image_extension=args.image_extension,
@@ -407,7 +414,7 @@ def main(args=None):
 
     # create the model
     if args.snapshot is not None:
-        print('Loading model, this may take a second...')
+        print('WARN: Loading rgbd model is not tested yet, this may take a second...')
         model            = models.load_model(args.snapshot, backbone_name=args.backbone)
         training_model   = model
         anchor_params    = None
@@ -416,13 +423,14 @@ def main(args=None):
         prediction_model = retinanet_bbox(model=model, anchor_params=anchor_params)
     else:
         weights = args.weights
-        print("weights arg is {}".format(weights))
         # default to imagenet if nothing else is specified
         if weights is None and args.imagenet_weights:
-            print("Caution! Loading imagenet weights")
+            print("WARN: Loading imagenet weights")
             weights = backbone.download_imagenet()
 
         print('Creating model, this may take a second...')
+        inputs = keras.layers.Input(shape=(None, None, 4)) #This is a 4 for RGBD input
+
         model, training_model, prediction_model = create_models(
             backbone_retinanet=backbone.retinanet,
             num_classes=train_generator.num_classes(),
@@ -430,6 +438,7 @@ def main(args=None):
             multi_gpu=args.multi_gpu,
             freeze_backbone=args.freeze_backbone,
             lr=args.lr,
+            inputs=inputs,
             config=args.config
         )
 

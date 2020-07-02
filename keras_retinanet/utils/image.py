@@ -29,15 +29,24 @@ def read_image_bgr(path):
         path: Path to the image.
     """
     # We deliberately don't use cv2.imread here, since it gives no feedback on errors while reading the image.
-    image = np.ascontiguousarray(Image.open(path).convert('RGB'))
+    image = np.ascontiguousarray(Image.open(path).convert('RGB')) #-1 index converts from RGB to BGR
     return image[:, :, ::-1]
 
+def read_depth_image(path):
+    """ Read a depth image as a numpy array.
+
+    Args
+        path: Path to the image.
+    """
+    # We deliberately don't use cv2.imread here, since it gives no feedback on errors while reading the image.
+    depth = np.load(path, allow_pickle=True)
+    return depth
 
 def preprocess_image(x, mode='caffe'):
     """ Preprocess an image by subtracting the ImageNet mean.
 
     Args
-        x: np.array of shape (None, None, 3) or (3, None, None).
+        x: np.array of shape (None, None, 3) or (3, None, None) or (None, None, 4) or (4, None, None).
         mode: One of "caffe" or "tf".
             - caffe: will zero-center each color channel with
                 respect to the ImageNet dataset, without scaling.
@@ -53,10 +62,16 @@ def preprocess_image(x, mode='caffe'):
     x = x.astype(np.float32)
 
     if mode == 'tf':
+        if x.shape[2] == 4:
+            print("WARNING: tf mode 'process_image' normalisation is not implemented for RGBD")
+            return
         x /= 127.5
         x -= 1.
     elif mode == 'caffe':
-        x -= [103.939, 116.779, 123.68]
+        if(x.shape[2] == 4):
+            x -= [103.939, 116.779, 123.68, 0]
+        else:
+            x -= [103.939, 116.779, 123.68]
 
     return x
 
@@ -192,6 +207,7 @@ def resize_image(img, min_side=800, max_side=1333):
 
     # resize the image with the computed scale
     img = cv2.resize(img, None, fx=scale, fy=scale)
+    #JASPER: I think this should work fine for RGBD images, may need checking
 
     return img, scale
 

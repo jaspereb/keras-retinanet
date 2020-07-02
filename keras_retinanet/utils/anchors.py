@@ -221,8 +221,7 @@ def anchors_for_shape(
 
     if anchor_params is None:
         anchor_params = AnchorParameters.default
-        print("Using default anchor parameters of:")
-        print(anchor_params)
+        # print("Using default anchor parameters")
 
     if shapes_callback is None:
         shapes_callback = guess_shapes
