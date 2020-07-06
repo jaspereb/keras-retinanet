@@ -22,7 +22,7 @@ import keras_resnet.models
 from . import retinanet
 from . import Backbone
 from ..utils.image import preprocess_image
-
+from . import resnet_split
 
 class ResNetBackbone(Backbone):
     """ Describes backbone information and provides utility functions.
@@ -99,14 +99,11 @@ def resnet_retinanet(num_classes, backbone='resnet50', inputs=None, modifier=Non
         print("Building ResNet backbone using defined input shape of {}".format(inputs))
 
     # create the resnet backbone
-    if backbone == 'resnet50':
-        resnet = keras_resnet.models.ResNet50(inputs, include_top=False, freeze_bn=True)
-    elif backbone == 'resnet101':
-        resnet = keras_resnet.models.ResNet101(inputs, include_top=False, freeze_bn=True)
-    elif backbone == 'resnet152':
-        resnet = keras_resnet.models.ResNet152(inputs, include_top=False, freeze_bn=True)
-    else:
-        raise ValueError('Backbone (\'{}\') is invalid.'.format(backbone))
+    if backbone != 'resnet101':
+        print("ERROR: Only resnet101 is implemented for RGBD late fusion")
+        return
+
+    resnet = resnet_split.ResNet101Split(inputs, include_top=False, freeze_bn=True)
 
     # invoke modifier if given
     if modifier:
