@@ -12,12 +12,15 @@ import keras.backend
 import keras.layers
 import keras.models
 import keras.regularizers
+import tensorflow as tf
 
 import keras_resnet.blocks
 import keras_resnet.layers
 
 from . import blocks_split
 
+import os
+import numpy as np
 
 def ResNetSplit(inputs, blocks, include_top=True, classes=1000, freeze_bn=True, numerical_names=None, *args, **kwargs):
     """
@@ -56,6 +59,10 @@ def ResNetSplit(inputs, blocks, include_top=True, classes=1000, freeze_bn=True, 
 
         >>> model.compile("adam", "categorical_crossentropy", ["accuracy"])
     """
+
+    printValues = False
+    # saveValues = True
+
     if keras.backend.image_data_format() == "channels_last":
         axis = 3
     else:
@@ -66,13 +73,27 @@ def ResNetSplit(inputs, blocks, include_top=True, classes=1000, freeze_bn=True, 
         numerical_names = [True] * len(blocks)
 
     def slice_rgb(x):
-        return x[:, :, :, :2]
+        return x[:, :, :, 0:3]
 
     def slice_d(x):
-        return x[:, :, :, ]
+        return x[:, :, :, 3:]
+
+    def print_stuff(x):
+        x = keras.backend.print_tensor(x)
+        return x
+
+    # def save_stuff(x):
+    #     if(not os.path.exists('/home/jasper/git/CEIG/keras-retinanet/examples/sampleData/save_stuff/data.npy'))
+    #     return x
 
     x_rgb = keras.layers.Lambda(slice_rgb)(inputs)
     x_d = keras.layers.Lambda(slice_d)(inputs)
+
+    if(printValues):
+        x_rgb = keras.layers.Lambda(print_stuff)(x_rgb)
+        # x_rgb = keras.backend.print_tensor(x_rgb, "RGB is : ")
+        # x_rgb = tf.print(x_rgb)
+
 
     x_rgb = keras.layers.ZeroPadding2D(padding=3, name="padding_conv1_rgb")(x_rgb)
     x_rgb = keras.layers.Conv2D(64, (7, 7), strides=(2, 2), use_bias=False, name="conv1_rgb")(x_rgb)
@@ -82,7 +103,7 @@ def ResNetSplit(inputs, blocks, include_top=True, classes=1000, freeze_bn=True, 
 
     x_d = keras.layers.ZeroPadding2D(padding=3, name="padding_conv1_d")(x_d)
     x_d = keras.layers.Conv2D(64, (7, 7), strides=(2, 2), use_bias=False, name="conv1_d")(x_d)
-    x_d = keras_resnet.layers.BatchNormalization(axis=axis, epsilon=1e-5, freeze=freeze_bn, name="bn_conv1_d")(x_d)
+    # x_d = keras_resnet.layers.BatchNormalization(axis=axis, epsilon=1e-5, freeze=freeze_bn, name="bn_conv1_d")(x_d)
     x_d = keras.layers.Activation("relu", name="conv1_relu_d")(x_d)
     x_d = keras.layers.MaxPooling2D((3, 3), strides=(2, 2), padding="same", name="pool1_d")(x_d)
 

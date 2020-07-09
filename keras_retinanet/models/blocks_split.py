@@ -195,20 +195,20 @@ def bottleneck_2d_d(filters, stage=0, block=0, kernel_size=3, numerical_name=Fal
 
     def f(x):
         y = keras.layers.Conv2D(filters, (1, 1), strides=stride, use_bias=False, name="res{}{}_branch2a_d".format(stage_char, block_char), **parameters)(x)
-        y = keras_resnet.layers.BatchNormalization(axis=axis, epsilon=1e-5, freeze=freeze_bn, name="bn{}{}_branch2a_d".format(stage_char, block_char))(y)
+        # y = keras_resnet.layers.BatchNormalization(axis=axis, epsilon=1e-5, freeze=freeze_bn, name="bn{}{}_branch2a_d".format(stage_char, block_char))(y)
         y = keras.layers.Activation("relu", name="res{}{}_branch2a_relu_d".format(stage_char, block_char))(y)
 
         y = keras.layers.ZeroPadding2D(padding=1, name="padding{}{}_branch2b_d".format(stage_char, block_char))(y)
         y = keras.layers.Conv2D(filters, kernel_size, use_bias=False, name="res{}{}_branch2b_d".format(stage_char, block_char), **parameters)(y)
-        y = keras_resnet.layers.BatchNormalization(axis=axis, epsilon=1e-5, freeze=freeze_bn, name="bn{}{}_branch2b_d".format(stage_char, block_char))(y)
+        # y = keras_resnet.layers.BatchNormalization(axis=axis, epsilon=1e-5, freeze=freeze_bn, name="bn{}{}_branch2b_d".format(stage_char, block_char))(y)
         y = keras.layers.Activation("relu", name="res{}{}_branch2b_relu_d".format(stage_char, block_char))(y)
 
         y = keras.layers.Conv2D(filters * 4, (1, 1), use_bias=False, name="res{}{}_branch2c_d".format(stage_char, block_char), **parameters)(y)
-        y = keras_resnet.layers.BatchNormalization(axis=axis, epsilon=1e-5, freeze=freeze_bn, name="bn{}{}_branch2c_d".format(stage_char, block_char))(y)
+        # y = keras_resnet.layers.BatchNormalization(axis=axis, epsilon=1e-5, freeze=freeze_bn, name="bn{}{}_branch2c_d".format(stage_char, block_char))(y)
 
         if block == 0:
             shortcut = keras.layers.Conv2D(filters * 4, (1, 1), strides=stride, use_bias=False, name="res{}{}_branch1_d".format(stage_char, block_char), **parameters)(x)
-            shortcut = keras_resnet.layers.BatchNormalization(axis=axis, epsilon=1e-5, freeze=freeze_bn, name="bn{}{}_branch1_d".format(stage_char, block_char))(shortcut)
+            # shortcut = keras_resnet.layers.BatchNormalization(axis=axis, epsilon=1e-5, freeze=freeze_bn, name="bn{}{}_branch1_d".format(stage_char, block_char))(shortcut)
         else:
             shortcut = x
 

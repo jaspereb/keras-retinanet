@@ -152,6 +152,9 @@ class PascalRGBDGenerator(Generator):
         rgbd = np.concatenate((rgb, d), axis=2)
         # print("rgbd size {}".format(rgbd.shape))
 
+        # print("Saving RGBD example input")
+        # np.save('/home/jasper/git/CEIG/keras-retinanet/examples/sampleData/rgbd_input.npy', rgbd)
+
         return rgbd
 
     def __parse_annotation(self, element):

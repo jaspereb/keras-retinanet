@@ -55,7 +55,7 @@ from ..utils.keras_version import check_keras_version
 from ..utils.model import freeze as freeze_model
 from ..utils.tf_version import check_tf_version
 from ..utils.transform import random_transform_generator
-
+from ..models.rgbd_layers_list import get_d_layers
 
 def makedirs(path):
     # Intended behavior: try to create the directory,
@@ -69,16 +69,46 @@ def makedirs(path):
 
 
 def model_with_weights(model, weights, skip_mismatch):
-    """ Load weights for model.
+    """ Load weights by name into the RGB and depth backbones separately.
 
     Args
         model         : The model to load weights for.
         weights       : The weights to load.
         skip_mismatch : If True, skips layers whose shape of weights doesn't match with the model.
     """
+
+    #Rename the RGB branch and load those weights
+    renamedLayers = []
+    for layer in model.layers:
+        ln = layer.name
+        if ln[-4:] == '_rgb':
+            layer.name = layer.name[:-4]
+            renamedLayers.append(layer.name)
+
     if weights is not None:
-        print("Loading weights into model")
+        print("Loading weights into RGB model")
         model.load_weights(weights, by_name=True, skip_mismatch=skip_mismatch)
+
+    for layer in model.layers:
+        if layer.name in renamedLayers:
+            layer.name = layer.name + '_rgb'
+
+    # Rename the depth branch and load those weights
+    renamedLayers = []
+    for layer in model.layers:
+        ln = layer.name
+        if ln[-2:] == '_d':
+            layer.name = layer.name[:-2]
+            renamedLayers.append(layer.name)
+
+    if weights is not None:
+        print("Loading weights into depth model")
+        model.load_weights(weights, by_name=True, skip_mismatch=skip_mismatch)
+
+    for layer in model.layers:
+        if layer.name in renamedLayers:
+            layer.name = layer.name + '_d'
+
     return model
 
 
@@ -463,8 +493,52 @@ def main(args=None):
     if not args.compute_val_loss:
         validation_generator = None
 
-    # start training
-    return training_model.fit_generator(
+    dLayers = get_d_layers()
+    for layer in training_model.layers:
+        if layer.name in dLayers:
+            layer.trainable = False
+            # print("freezing layer: {}".format(layer.name))
+
+    training_model.compile(
+        loss={
+            'regression': losses.smooth_l1(),
+            'classification': losses.focal()
+        },
+        optimizer=keras.optimizers.adam(lr=args.lr, clipnorm=0.001)
+    )
+
+    # start training RGB network
+    training_model.fit_generator(
+        generator=train_generator,
+        steps_per_epoch=args.steps,
+        epochs=20, #Pre train on 20 epochs
+        verbose=1,
+        callbacks=callbacks,
+        workers=args.workers,
+        use_multiprocessing=args.multiprocessing,
+        max_queue_size=args.max_queue_size,
+        validation_data=validation_generator,
+        initial_epoch=args.initial_epoch
+    )
+
+    print("Now training depth backbone as well")
+
+    for layer in training_model.layers:
+        if layer.name in dLayers:
+            layer.trainable = True
+            # print("unfreezing layer: {}".format(layer.name))
+
+    training_model.compile(
+        loss={
+            'regression': losses.smooth_l1(),
+            'classification': losses.focal()
+        },
+        optimizer=keras.optimizers.adam(lr=args.lr, clipnorm=0.001)
+    )
+    print(model.summary())
+
+    # start training depth network
+    training_model.fit_generator(
         generator=train_generator,
         steps_per_epoch=args.steps,
         epochs=args.epochs,
@@ -477,6 +551,7 @@ def main(args=None):
         initial_epoch=args.initial_epoch
     )
 
+    print("ALL DONE :-) ")
 
 if __name__ == '__main__':
     print("CHECK: Is CUDA the right version (10)?")
