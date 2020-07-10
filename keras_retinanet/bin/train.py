@@ -236,6 +236,7 @@ def create_generators(args, preprocess_image):
 
     # create random transform generator for augmenting training data
     if args.random_transform:
+        print("Using data augmentation generator")
         transform_generator = random_transform_generator(
             min_rotation=-0.1,
             max_rotation=0.1,
@@ -255,6 +256,7 @@ def create_generators(args, preprocess_image):
             saturation_range=(0.95, 1.05)
         )
     else:
+        print("Not augmenting data")
         transform_generator = random_transform_generator(flip_x_chance=0.5)
         visual_effect_generator = None
 
@@ -349,7 +351,7 @@ def parse_args(args):
     group.add_argument('--imagenet-weights',  help='Initialize the model with pretrained imagenet weights. This is the default behaviour.', action='store_const', const=True, default=False)
     group.add_argument('--weights',           help='Initialize the model with weights from a file.')
     group.add_argument('--no-weights',        help='Don\'t initialize the model with any weights.', dest='imagenet_weights', action='store_const', const=False)
-    parser.add_argument('--backbone',         help='Backbone model used by retinanet.', default='resnet50', type=str)
+    parser.add_argument('--backbone',         help='Backbone model used by retinanet.', default='resnet101', type=str)
     parser.add_argument('--batch-size',       help='Size of the batches.', default=1, type=int)
     parser.add_argument('--gpu',              help='Id of the GPU to use (as reported by nvidia-smi).', type=int)
     parser.add_argument('--multi-gpu',        help='Number of GPUs to use for parallel processing.', type=int, default=0)
@@ -388,6 +390,7 @@ def main(args=None):
     args = parse_args(args)
 
     # create object that stores backbone information
+    print("Using backbone {}".format(args.backbone))
     backbone = models.backbone(args.backbone)
 
     # make sure keras and tensorflow are the minimum required version
@@ -419,7 +422,7 @@ def main(args=None):
         print("weights arg is {}".format(weights))
         # default to imagenet if nothing else is specified
         if weights is None and args.imagenet_weights:
-            print("Caution! Loading imagenet weights")
+            print("Loading imagenet weights")
             weights = backbone.download_imagenet()
 
         print('Creating model, this may take a second...')
