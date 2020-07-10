@@ -1,6 +1,0 @@
-CHECK: Is CUDA the right version (10)?
-Applying only visual effects augmentation to RGBD data
-Loading a pascal format RGBD dataset
-weights arg is None
-WARN: Loading imagenet weights
-Creating model, this may take a second...
